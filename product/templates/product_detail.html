@@ -1,0 +1,27 @@
+{%  extends 'base.html' %}
+
+{% block content %}
+    <a href="{% url 'product_list' %}">Все товары</a>
+    <hr>
+    <div>
+        {{ product.title }}
+        {{ product.price }}
+        {{ product.description }}
+        {{ product.rating }}
+        <div>
+            <img src="{{ product.image.url }}" width="75">
+        </div>
+    </div>
+    <hr>
+    <form method="post">
+        {%  csrf_token %}
+        {{ comment_form }}
+        <input type="submit" value="Comment">
+    </form>
+    <div>
+        {% for comment in comments %}
+            <h5>{{ comment.text }}</h5>
+            <p>{{ comment.rating }}</p>
+        {% endfor %}
+    </div>
+{% endblock %}ee2
