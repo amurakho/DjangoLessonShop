@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views import generic
 from django.views.generic.edit import FormMixin
 from django.http import HttpResponse
@@ -62,11 +62,13 @@ class ProductDetailView(FormMixin, generic.DetailView):
     model = models.Product
     context_object_name = 'product'
     form_class = forms.CommentForm
+    product_in_bucket_form = forms.ProductInBucketForm
 
     def get_context_data(self, *args, **kwargs):
         context = super(ProductDetailView, self).get_context_data(*args, **kwargs)
         context['comment_form'] = self.get_form_class()
         context['comments'] = self.get_object().comment_set.all()
+        context['product_in_bucket_form'] = self.product_in_bucket_form
         return context
 
     def _add_product_to_viewered_container(self, container, request):
@@ -77,9 +79,7 @@ class ProductDetailView(FormMixin, generic.DetailView):
     def _check_not_duplicate(self, container):
         if not container:
             return True
-        request.session.set_test_cookie()
-        request.session.test_cookie_worked()
-        request.sesion.delete_test_cookie()
+
         prev_elem = len(container) - 1
         if container[prev_elem] == self.object.slug:
             return False
@@ -99,11 +99,38 @@ class ProductDetailView(FormMixin, generic.DetailView):
         return response
 
     def post(self, request, *args, **kwargs):
-        form = self.get_form()
-        if form.is_valid():
-            return self.form_valid(form)
+        if request.POST.get('text'):
+            form = self.get_form()
+            if form.is_valid():
+                return self.form_valid(form)
+            else:
+                return self.form_invalid(form)
         else:
-            return self.form_invalid(form)
+            product = self.get_object()
+            count = request.POST.get('count')
+
+            product_in_bucket = models.ProductInBucket(product=product, count=count)
+
+            bucket_id = request.session.get('bucket_id')
+            if bucket_id:
+                bucket = get_object_or_404(models.Bucket, id=bucket_id)
+                for existed_product_in_bucket in bucket.products_in_bucket.all():
+                    if existed_product_in_bucket.product == product_in_bucket.product:
+                        existed_product_in_bucket.count += int(product_in_bucket.count)
+                        existed_product_in_bucket.save()
+                    else:
+                        product_in_bucket.save()
+                        bucket.products_in_bucket.add(product_in_bucket)
+            else:
+                bucket = models.Bucket()
+                bucket.save()
+                product_in_bucket.save()
+                bucket.products_in_bucket.add(product_in_bucket)
+                request.session['bucket_id'] = bucket.id
+
+            bucket.update_price()
+            return self.get_success_url()
+
 
     def form_valid(self, form):
         comment = models.Comment(

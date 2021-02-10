@@ -3,6 +3,11 @@
 {% block content %}
     <a href="{% url 'product_list' %}">Все товары</a>
     <hr>
+    <form method="post">
+        {% csrf_token %}
+        {{ product_in_bucket_form }}
+        <input type="submit" value="Buy">
+    </form>
     <div>
         {{ product.title }}
         {{ product.price }}

@@ -1,6 +1,6 @@
 from django import forms
 
-from product.models import Comment
+from product.models import Comment, ProductInBucket
 
 
 class SearchForm(forms.Form):
@@ -15,3 +15,10 @@ class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
         fields = ('text', 'rating')
+
+
+class ProductInBucketForm(forms.ModelForm):
+
+    class Meta:
+        model = ProductInBucket
+        exclude = ('product', )
